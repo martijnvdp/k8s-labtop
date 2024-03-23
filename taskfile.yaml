@@ -1,0 +1,116 @@
+version: '3'
+
+tasks:
+
+  cluster-create-basic:
+    desc: Creates a basic kind cluster with ingress
+    output: prefixed
+    silent: true
+    vars:
+      TIMEOUT: 300s
+    deps:
+      - task: kind-create-cluster
+        vars:
+          config: ./cluster-config/default.yaml
+    cmds:
+      - task: deploy-ingress-nginx
+      - cmd: echo "cluster deployed"
+
+  cluster-create-complete:
+    desc: Creates a complete kind cluster with all apps
+    output: prefixed
+    silent: true
+    vars:
+      TIMEOUT: 300s
+    deps:
+      - task: kind-create-cluster
+        vars:
+          config: ./cluster-config/default.yaml
+    cmds:
+      - task: deploy-ingress-nginx
+      - task: deploy-argocd
+      - task: deploy-argocd-apps
+      - task: deploy-labtop-info
+      - cmd: echo "cluster deployed"
+      - cmd: echo "http://labtop-info.127.0.0.1.nip.io"
+
+  deploy-argocd:
+    desc: deployes argocd
+    vars:
+      TIMEOUT: 600s
+    cmds:
+    - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f $PSScriptRoot\values\argo-cd.yaml --create-namespace
+    - kubectl wait --namespace argo-cd --for=condition=Ready pod -l="app.kubernetes.io/instance"=argo-cd --timeout=600s
+
+  deploy-argo-rollouts:
+    desc: deployes argo rollouts
+    vars:
+      TIMEOUT: 600s
+    cmds:
+    - helm install argo-rollouts argo-cd/argo-rollouts  -n argo-rollouts -f ./values/argo-rollouts.yaml --create-namespace
+    - kubectl wait --namespace argo-rollouts --for=condition=Ready pod -l="app.kubernetes.io/instance"=argo-rollouts --timeout=600s
+    - echo "argo-rollouts.127.0.0.1.nip.io"
+
+  deploy-argocd-apps:
+    desc: deployes the argocd apps and projects
+    cmds:
+    - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f $PSScriptRoot\values\argo-cd.yaml --create-namespace
+    - k apply -f .\argo-resources\projects
+    - k apply -f .\argo-resources\applications
+
+  deploy-ingress-nginx:
+    desc: deployes the ingress-nginx controller
+    vars:
+      TIMEOUT: 600s
+    cmds:
+      - helm install ingress-nginx ingress-nginx/ingress-nginx -f ./values/ingress-nginx.yaml -n ingress-nginx --create-namespace
+      - kubectl wait --namespace ingress-nginx --for=condition=ready pod -l=app.kubernetes.io/component=controller  --timeout={{.TIMEOUT}}
+
+  deploy-labtop-info:
+    desc: deployes the labtop-info webserver app
+    vars:
+      TIMEOUT: 600s
+    cmds:
+      - kubectl apply -f ./apps/labtop-info
+      - kubectl wait --namespace argo-cd --for=condition=ready pod -l=app=labtop-info  --timeout={{.TIMEOUT}}
+      - echo "http://labtop-info.127.0.0.1.nip.io"
+
+  demo-argo-rollouts-blue-green:
+    desc: deploy argo rolouts blue-green demo
+    silent: true
+    deps:
+     - task: cluster-create-basic
+    vars:
+      TIMEOUT: 600s
+    cmds:
+      - task: deploy-argo-rollouts
+      - cmd: kubectl create ns demos-argo-rollouts-bluegreen
+      - cmd: kubectl apply -f ./demos/argo-rollouts/blue-green
+      - cmd: kubectl wait --namespace demos-argo-rollouts-bluegreen --for=condition=ready pod -l=app=bluegreen-demo  --timeout={{.TIMEOUT}}
+      - cmd: echo "http://blue-green.dev.127.0.0.1.nip.io"
+      - cmd: echo "http://blue-green-preview.dev.127.0.0.1.nip.io"
+      - cmd: echo "http://argo-rollouts.127.0.0.1.nip.io"
+
+  kind-export-kubeconfig:
+    desc: Export kubeconfig
+    cmds:
+    - kind export kubeconfig
+  
+  kind-destroy-cluster:
+    desc: Destroys the cluster
+    cmds:
+      - kind delete cluster
+  
+  kind-create-cluster:
+    desc: Creates a kind cluster
+    cmds: 
+      - 'kind create cluster --config {{ .config }}'
+    ignore_error: true
+
+  helm-repos:
+    cmds:
+      - helm repo add crossplane-stable https://charts.crossplane.io/stable
+      - helm repo add argo-cd https://argoproj.github.io/argo-helm
+      - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+      - helm repo update
+    internal: true

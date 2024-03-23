@@ -1,0 +1,8 @@
+fullnameOverride: "argo-rollouts"
+dashboard:
+  enabled: true
+  ingress:
+    hosts: 
+    - argo-rollouts.127.0.0.1.nip.io
+    enabled: true
+    ingressClassName: nginx
