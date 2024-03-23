@@ -30,9 +30,7 @@ tasks:
       - task: deploy-ingress-nginx
       - task: deploy-argocd
       - task: deploy-argocd-apps
-      - task: deploy-labtop-info
       - cmd: echo "cluster deployed"
-      - cmd: echo "http://labtop-info.127.0.0.1.nip.io"
 
   deploy-argocd:
     desc: deployes argocd
@@ -65,15 +63,6 @@ tasks:
     cmds:
       - helm install ingress-nginx ingress-nginx/ingress-nginx -f ./values/ingress-nginx.yaml -n ingress-nginx --create-namespace
       - kubectl wait --namespace ingress-nginx --for=condition=ready pod -l=app.kubernetes.io/component=controller  --timeout={{.TIMEOUT}}
-
-  deploy-labtop-info:
-    desc: deployes the labtop-info webserver app
-    vars:
-      TIMEOUT: 600s
-    cmds:
-      - kubectl apply -f ./apps/labtop-info
-      - kubectl wait --namespace argo-cd --for=condition=ready pod -l=app=labtop-info  --timeout={{.TIMEOUT}}
-      - echo "http://labtop-info.127.0.0.1.nip.io"
 
   demo-argo-rollouts-blue-green:
     desc: deploy argo rolouts blue-green demo
