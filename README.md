@@ -6,8 +6,10 @@ scripts to setup a local k8s lab on the laptop
 
 # example task file usage
 task cluster-create-basic
+
 task demo-argo-rollouts-blue-green
+
 # refs
-https://nip.io/
-https://taskfile.dev/usage/
-https://github.com/go-task/task
+- https://nip.io/
+- https://taskfile.dev/usage/
+- https://github.com/go-task/task
