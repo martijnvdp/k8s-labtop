@@ -1,0 +1,8 @@
+server:
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hostname: argo-cd.127.0.0.1.nip.io
+configs:
+  params:
+    server.insecure: true
