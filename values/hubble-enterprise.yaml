@@ -1,0 +1,3 @@
+enabled: true
+dnsPolicy: Default
+hostNetwork: true
