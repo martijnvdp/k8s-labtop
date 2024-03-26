@@ -1,5 +1,9 @@
 version: '3'
 
+vars:
+  hubbleEnterpriseVersion: 1.11.9
+  hubbleUIEnterpriseVersion: 0.28.1
+
 tasks:
 
   cluster-create-basic:
@@ -70,6 +74,17 @@ tasks:
       - helm install cilium-enterprise isovalent/cilium -f ./values/cilium-enterprise.yaml -n kube-system --version {{.VERSION}}
       - kubectl wait --namespace kube-system --for=condition=ready pod -l=app.kubernetes.io/part-of=cilium --timeout={{.TIMEOUT}}
 
+  deploy-clickhouse-operator:
+    desc: deploy clickhouse operator
+    deps:
+      - task: helm-repos 
+    vars:
+      TIMEOUT: 600s
+      VERSION: 0.20.3
+    cmds:
+      - helm install clickhouse-operator altinity-clickhouse-operator/altinity-clickhouse-operator --wait --namespace clickhouse-operator --create-namespace --set 'operator.env[0].name=WATCH_NAMESPACES,operator.env[0].value=hubble-timescape'
+      - kubectl wait --namespace kube-system --for=condition=ready pod -l=app.kubernetes.io/instance=clickhouse-operator --timeout={{.TIMEOUT}}
+
   deploy-hubble-enterprise:
     desc: deploy hubble enterprise
     deps:
@@ -78,7 +93,7 @@ tasks:
       TIMEOUT: 600s
       VERSION: 1.11.9
     cmds:
-      - helm install hubble-enterprise isovalent/hubble-enterprise -f ./values/hubble-enterprise.yaml -n kube-system --version {{.VERSION}}
+      - helm install hubble-enterprise isovalent/hubble-enterprise -f ./values/hubble-enterprise.yaml -n kube-system --version {{.hubbleEnterpriseVersion}}
       - kubectl wait --namespace kube-system --for=condition=ready pod -l=app.kubernetes.io/name=hubble-enterprise --timeout={{.TIMEOUT}}
 
   deploy-hubble-ui-enterprise:
@@ -89,10 +104,39 @@ tasks:
       TIMEOUT: 600s
       VERSION: 0.28.1
     cmds:
-      - helm install hubble-ui-enterprise isovalent/hubble-ui -f ./values/hubble-ui-enterprise.yaml -n kube-system --version {{.VERSION}}
+      - helm install hubble-ui-enterprise isovalent/hubble-ui -f ./values/hubble-ui-enterprise.yaml -n kube-system --version {{.hubbleUIEnterpriseVersion}}
       - kubectl wait --namespace kube-system --for=condition=ready pod -l=k8s-app=hubble-ui --timeout={{.TIMEOUT}}
       - echo "http://hubble-ui.127.0.0.1.nip.io"
 
+  deploy-hubble-timescape:
+    desc: deploy hubble timescape
+    deps:
+      - task: cluster-create-cilium-enterprise
+      - task: helm-repos
+    vars:
+      TIMEOUT: 600s
+      VERSION: 1.2.2
+    cmds:
+      - task: deploy-minio
+      - helm upgrade hubble-enterprise isovalent/hubble-enterprise --wait --version {{.hubbleEnterpriseVersion}} -n kube-system -f ./values/hubble-enterprise-timescape.yaml 
+      - kubectl wait --namespace kube-system --for=condition=ready pod -l=app.kubernetes.io/name=hubble-enterprise --timeout={{.TIMEOUT}}
+      - task: deploy-clickhouse-operator
+      - |
+        kubectl create namespace hubble-timescape
+        kubectl -n hubble-timescape create secret generic hubble-timescape-migrate-creds \
+        --from-literal CLICKHOUSE_PASSWORD=migrate-password 
+        kubectl -n hubble-timescape create secret generic hubble-timescape-ingester-creds \
+        --from-literal AWS_ACCESS_KEY_ID=minio \
+        --from-literal AWS_SECRET_ACCESS_KEY=quickstart \
+        --from-literal AWS_REGION=dummy \
+        --from-literal CLICKHOUSE_PASSWORD=ingester-password
+        kubectl -n hubble-timescape create secret generic hubble-timescape-server-creds \
+        --from-literal CLICKHOUSE_PASSWORD=server-password
+      - helm install hubble-timescape isovalent/hubble-timescape --version {{.VERSION}} --namespace hubble-timescape --values ./values/hubble-timescape.yaml
+      - kubectl wait --namespace kube-system --for=condition=ready pod -l=app.kubernetes.io/part-of=hubble-timescape --timeout={{.TIMEOUT}}
+      - helm upgrade hubble-ui-enterprise isovalent/hubble-ui --reuse-values --set timescape.enabled=true -n kube-system --version {{.hubbleUIEnterpriseVersion}}
+      - kubectl wait --namespace kube-system --for=condition=ready pod -l=k8s-app=hubble-ui --timeout={{.TIMEOUT}}
+  
   deploy-ingress-nginx:
     desc: deploys the ingress-nginx controller
     deps:
@@ -101,7 +145,18 @@ tasks:
       TIMEOUT: 600s
     cmds:
       - helm install ingress-nginx ingress-nginx/ingress-nginx -f ./values/ingress-nginx.yaml -n ingress-nginx --create-namespace
-      - kubectl wait --namespace ingress-nginx --for=condition=ready pod -l=app.kubernetes.io/component=controller  --timeout={{.TIMEOUT}}
+      - kubectl wait --namespace ingress-nginx --for=condition=ready pod -l=app.kubernetes.io/component=controller --timeout={{.TIMEOUT}}
+
+  deploy-minio:
+    desc: deploy minio storrage (S3 compatible blob storage)
+    deps:
+      - task: helm-repos
+    vars:
+      TIMEOUT: 5m
+    cmds:
+      - helm install minio-operator minio/operator --wait --version 5.0.5 --namespace minio-operator --create-namespace
+      - helm install minio-tenant minio/tenant --wait --version 5.0.5 --namespace minio --create-namespace -f ./values/minio-tenant.yaml
+      - kubectl wait --for jsonpath='{.status.currentState}'=Initialized tenants quickstart -n minio --timeout={{.TIMEOUT}}
 
   demo-argo-rollouts-blue-green:
     desc: deploy argo rolouts blue-green demo
@@ -135,9 +190,11 @@ tasks:
 
   helm-repos:
     cmds:
-      - helm repo add crossplane-stable https://charts.crossplane.io/stable
+      - helm repo add altinity-clickhouse-operator https://docs.altinity.com/clickhouse-operator
       - helm repo add argo-cd https://argoproj.github.io/argo-helm
+      - helm repo add crossplane-stable https://charts.crossplane.io/stable
       - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
       - helm repo add isovalent https://helm.isovalent.com
-      - helm repo update crossplane-stable argo-cd ingress-nginx isovalent
+      - helm repo add minio https://operator.min.io/
+      - helm repo update crossplane-stable argo-cd ingress-nginx isovalent minio altinity-clickhouse-operator
     internal: true
