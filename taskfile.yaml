@@ -37,7 +37,7 @@ tasks:
     vars:
       TIMEOUT: 600s
     cmds:
-    - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f $PSScriptRoot\values\argo-cd.yaml --create-namespace
+    - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f ./values/argo-cd.yaml --create-namespace
     - kubectl wait --namespace argo-cd --for=condition=Ready pod -l="app.kubernetes.io/instance"=argo-cd --timeout=600s
 
   deploy-argo-rollouts:
@@ -52,7 +52,7 @@ tasks:
   deploy-argocd-apps:
     desc: deployes the argocd apps and projects
     cmds:
-    - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f $PSScriptRoot\values\argo-cd.yaml --create-namespace
+    - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f .\values\argo-cd.yaml --create-namespace
     - k apply -f .\argo-resources\projects
     - k apply -f .\argo-resources\applications
 
