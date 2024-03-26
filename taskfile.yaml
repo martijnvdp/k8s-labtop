@@ -36,43 +36,52 @@ tasks:
     desc: deploys argocd
     vars:
       TIMEOUT: 600s
+    deps:
+      - task: helm-repos
     cmds:
-    - helm repo add argo-cd https://argoproj.github.io/argo-helm
-    - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f ./values/argo-cd.yaml --create-namespace
-    - kubectl wait --namespace argo-cd --for=condition=Ready pod -l="app.kubernetes.io/instance"=argo-cd --timeout=600s
+      - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f ./values/argo-cd.yaml --create-namespace
+      - kubectl wait --namespace argo-cd --for=condition=Ready pod -l="app.kubernetes.io/instance"=argo-cd --timeout=600s
 
   deploy-argo-rollouts:
     desc: deploys argo rollouts
     vars:
       TIMEOUT: 600s
+    deps:
+      - task: helm-repos
     cmds:
-    - helm repo add argo-cd https://argoproj.github.io/argo-helm
-    - helm install argo-rollouts argo-cd/argo-rollouts  -n argo-rollouts -f ./values/argo-rollouts.yaml --create-namespace
-    - kubectl wait --namespace argo-rollouts --for=condition=Ready pod -l="app.kubernetes.io/instance"=argo-rollouts --timeout=600s
-    - echo "argo-rollouts.127.0.0.1.nip.io"
+      - helm install argo-rollouts argo-cd/argo-rollouts  -n argo-rollouts -f ./values/argo-rollouts.yaml --create-namespace
+      - kubectl wait --namespace argo-rollouts --for=condition=Ready pod -l="app.kubernetes.io/instance"=argo-rollouts --timeout=600s
+      - echo "argo-rollouts.127.0.0.1.nip.io"
 
   deploy-argocd-apps:
     desc: deploys the argocd apps and projects
+    deps:
+      - task: helm-repos
     cmds:
-    - helm repo add argo-cd https://argoproj.github.io/argo-helm
-    - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f ./values/argo-cd.yaml --create-namespace
-    - k apply -f ./argo-resources/projects
-    - k apply -f ./argo-resources/applications
+      - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f ./values/argo-cd.yaml --create-namespace
+      - k apply -f ./argo-resources/projects
+      - k apply -f ./argo-resources/applications
+
+  deploy-cilium-enterprise:
+    desc: deploy cilium enterprise
+    deps:
+      - task: helm-repos
+    cmds:
+      - helm install
 
   deploy-ingress-nginx:
     desc: deploys the ingress-nginx controller
+    deps:
+      - task: helm-repos
     vars:
       TIMEOUT: 600s
     cmds:
-      - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
       - helm install ingress-nginx ingress-nginx/ingress-nginx -f ./values/ingress-nginx.yaml -n ingress-nginx --create-namespace
       - kubectl wait --namespace ingress-nginx --for=condition=ready pod -l=app.kubernetes.io/component=controller  --timeout={{.TIMEOUT}}
 
   demo-argo-rollouts-blue-green:
     desc: deploy argo rolouts blue-green demo
     silent: true
-    deps:
-     - task: cluster-create-basic
     vars:
       TIMEOUT: 600s
     cmds:
@@ -87,7 +96,7 @@ tasks:
   kind-export-kubeconfig:
     desc: Export kubeconfig
     cmds:
-    - kind export kubeconfig
+      - kind export kubeconfig
   
   kind-destroy-cluster:
     desc: Destroys the cluster
@@ -105,5 +114,6 @@ tasks:
       - helm repo add crossplane-stable https://charts.crossplane.io/stable
       - helm repo add argo-cd https://argoproj.github.io/argo-helm
       - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-      - helm repo update
+      - helm repo add isovalent https://helm.isovalent.com
+      - helm repo update crossplane-stable argo-cd ingress-nginx isovalent
     internal: true
