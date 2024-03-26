@@ -52,9 +52,9 @@ tasks:
   deploy-argocd-apps:
     desc: deployes the argocd apps and projects
     cmds:
-    - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f .\values\argo-cd.yaml --create-namespace
-    - k apply -f .\argo-resources\projects
-    - k apply -f .\argo-resources\applications
+    - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f ./values/argo-cd.yaml --create-namespace
+    - k apply -f ./argo-resources/projects
+    - k apply -f ./argo-resources/applications
 
   deploy-ingress-nginx:
     desc: deployes the ingress-nginx controller
