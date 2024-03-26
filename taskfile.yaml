@@ -37,6 +37,7 @@ tasks:
     vars:
       TIMEOUT: 600s
     cmds:
+    - helm repo add argo-cd https://argoproj.github.io/argo-helm
     - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f ./values/argo-cd.yaml --create-namespace
     - kubectl wait --namespace argo-cd --for=condition=Ready pod -l="app.kubernetes.io/instance"=argo-cd --timeout=600s
 
@@ -45,6 +46,7 @@ tasks:
     vars:
       TIMEOUT: 600s
     cmds:
+    - helm repo add argo-cd https://argoproj.github.io/argo-helm
     - helm install argo-rollouts argo-cd/argo-rollouts  -n argo-rollouts -f ./values/argo-rollouts.yaml --create-namespace
     - kubectl wait --namespace argo-rollouts --for=condition=Ready pod -l="app.kubernetes.io/instance"=argo-rollouts --timeout=600s
     - echo "argo-rollouts.127.0.0.1.nip.io"
@@ -52,6 +54,7 @@ tasks:
   deploy-argocd-apps:
     desc: deployes the argocd apps and projects
     cmds:
+    - helm repo add argo-cd https://argoproj.github.io/argo-helm
     - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f ./values/argo-cd.yaml --create-namespace
     - k apply -f ./argo-resources/projects
     - k apply -f ./argo-resources/applications
@@ -61,6 +64,7 @@ tasks:
     vars:
       TIMEOUT: 600s
     cmds:
+      - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
       - helm install ingress-nginx ingress-nginx/ingress-nginx -f ./values/ingress-nginx.yaml -n ingress-nginx --create-namespace
       - kubectl wait --namespace ingress-nginx --for=condition=ready pod -l=app.kubernetes.io/component=controller  --timeout={{.TIMEOUT}}
 
