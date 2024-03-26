@@ -1,0 +1,23 @@
+dnsPolicy: ClusterFirstWithHostNet
+enterprise:
+  enabled: false
+export:
+  mode: fluentd
+  fluentd:
+    output: |-
+      @type s3
+      s3_endpoint http://minio.minio.svc.cluster.local/
+      s3_bucket timescape
+      force_path_style true
+      aws_key_id minio
+      aws_sec_key quickstart
+      path "hubble-events/%Y/%m/%d/#{hostname}/${tag}-"
+      store_as gzip
+      <format>
+        @type json
+      </format>
+      <buffer tag,time>
+        timekey 60
+        timekey_wait 1m
+        timekey_use_utc true # use utc
+      </buffer>

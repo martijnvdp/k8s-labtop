@@ -1,0 +1,28 @@
+secrets:
+  enabled: true
+  name: minio-secret
+  accessKey: minio
+  secretKey: quickstart
+tenant:
+  name: quickstart
+  configuration:
+    name: minio-secret
+  image:
+    repository: minio/minio
+    tag: RELEASE.2023-06-16T02-41-06Z
+    pullPolicy: IfNotPresent
+  pools:
+    - servers: 1
+      volumesPerServer: 4
+      size: 2Gi
+      storageClassName: standard
+  buckets:
+    - name: "timescape"
+  certificate:
+    requestAutoCert: false
+  kes:
+    configuration: false
+  log:
+    disabled: true
+  prometheus:
+    disabled: true
