@@ -16,21 +16,18 @@ tasks:
       - task: deploy-ingress-nginx
       - cmd: echo "cluster deployed"
 
-  cluster-create-complete:
-    desc: Creates a complete kind cluster with all apps
-    output: prefixed
-    silent: true
-    vars:
-      TIMEOUT: 300s
+  cluster-create-cilium-enterprise:
+    desc: Creates a cluster with cilium enterprise and ingress
     deps:
       - task: kind-create-cluster
         vars:
-          config: ./cluster-config/default.yaml
+          config: ./cluster-config/default-no-cni.yaml
     cmds:
+      - task: deploy-cilium-enterprise
+      - task: deploy-hubble-enterprise
       - task: deploy-ingress-nginx
-      - task: deploy-argocd
-      - task: deploy-argocd-apps
-      - cmd: echo "cluster deployed"
+      - task: deploy-hubble-ui-enterprise
+      - echo "http://hubble-ui.127.0.0.1.nip.io"
 
   deploy-argocd:
     desc: deploys argocd
@@ -65,9 +62,36 @@ tasks:
   deploy-cilium-enterprise:
     desc: deploy cilium enterprise
     deps:
-      - task: helm-repos
+      - task: helm-repos 
+    vars:
+      TIMEOUT: 600s
+      VERSION: 1.14.8
     cmds:
-      - helm install
+      - helm install cilium-enterprise isovalent/cilium -f ./values/cilium-enterprise.yaml -n kube-system --version {{.VERSION}}
+      - kubectl wait --namespace kube-system --for=condition=ready pod -l=app.kubernetes.io/part-of=cilium --timeout={{.TIMEOUT}}
+
+  deploy-hubble-enterprise:
+    desc: deploy hubble enterprise
+    deps:
+      - task: helm-repos 
+    vars:
+      TIMEOUT: 600s
+      VERSION: 1.11.9
+    cmds:
+      - helm install hubble-enterprise isovalent/hubble-enterprise -f ./values/hubble-enterprise.yaml -n kube-system --version {{.VERSION}}
+      - kubectl wait --namespace kube-system --for=condition=ready pod -l=app.kubernetes.io/name=hubble-enterprise --timeout={{.TIMEOUT}}
+
+  deploy-hubble-ui-enterprise:
+    desc: deploy hubble ui enterprise
+    deps:
+      - task: helm-repos 
+    vars:
+      TIMEOUT: 600s
+      VERSION: 0.28.1
+    cmds:
+      - helm install hubble-ui-enterprise isovalent/hubble-ui -f ./values/hubble-ui-enterprise.yaml -n kube-system --version {{.VERSION}}
+      - kubectl wait --namespace kube-system --for=condition=ready pod -l=k8s-app=hubble-ui --timeout={{.TIMEOUT}}
+      - echo "http://hubble-ui.127.0.0.1.nip.io"
 
   deploy-ingress-nginx:
     desc: deploys the ingress-nginx controller

@@ -1,0 +1,5 @@
+ingress:
+  enabled: true
+  host: hubble-ui.127.0.0.1.nip.io
+  ingressClassName: nginx
+  v1: true
