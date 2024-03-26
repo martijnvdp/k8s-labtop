@@ -156,6 +156,7 @@ tasks:
     cmds:
       - helm install minio-operator minio/operator --wait --version 5.0.5 --namespace minio-operator --create-namespace
       - helm install minio-tenant minio/tenant --wait --version 5.0.5 --namespace minio --create-namespace -f ./values/minio-tenant.yaml
+      - kubectl wait --namespace minio --for=condition=ready pod -l=app=minio --timeout={{.TIMEOUT}}
       - kubectl wait --for jsonpath='{.status.currentState}'=Initialized tenants quickstart -n minio --timeout={{.TIMEOUT}}
 
   demo-argo-rollouts-blue-green:
