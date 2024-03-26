@@ -33,7 +33,7 @@ tasks:
       - cmd: echo "cluster deployed"
 
   deploy-argocd:
-    desc: deployes argocd
+    desc: deploys argocd
     vars:
       TIMEOUT: 600s
     cmds:
@@ -42,7 +42,7 @@ tasks:
     - kubectl wait --namespace argo-cd --for=condition=Ready pod -l="app.kubernetes.io/instance"=argo-cd --timeout=600s
 
   deploy-argo-rollouts:
-    desc: deployes argo rollouts
+    desc: deploys argo rollouts
     vars:
       TIMEOUT: 600s
     cmds:
@@ -52,7 +52,7 @@ tasks:
     - echo "argo-rollouts.127.0.0.1.nip.io"
 
   deploy-argocd-apps:
-    desc: deployes the argocd apps and projects
+    desc: deploys the argocd apps and projects
     cmds:
     - helm repo add argo-cd https://argoproj.github.io/argo-helm
     - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f ./values/argo-cd.yaml --create-namespace
@@ -60,7 +60,7 @@ tasks:
     - k apply -f ./argo-resources/applications
 
   deploy-ingress-nginx:
-    desc: deployes the ingress-nginx controller
+    desc: deploys the ingress-nginx controller
     vars:
       TIMEOUT: 600s
     cmds:
