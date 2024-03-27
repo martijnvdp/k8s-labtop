@@ -174,8 +174,8 @@ tasks:
     cmds:
       - kubectl apply -f https://github.com/rabbitmq/cluster-operator/releases/latest/download/cluster-operator.yml
       - kubectl wait --namespace rabbitmq-system --for=condition=ready pod -l=app.kubernetes.io/name=rabbitmq-cluster-operator
-      - kubectl apply -f ./rabbitmq/namespace.yaml
-      - kubectl apply -f ./rabbitmq
+      - kubectl apply -f ./kubernetes/rabbitmq/namespace.yaml
+      - kubectl apply -f ./kubernetes/rabbitmq
       - kubectl wait --namespace rabbitmq-cluster --for=condition=ready pod -l=app.kubernetes.io/name=rabbitmq-cluster
       - task: print-ingress
       - cmd: echo "username (base64) "$(kubectl get secret -n rabbitmq-cluster rabbitmq-cluster-default-user -o=jsonpath='{.data.username}{"\n"}')
@@ -189,7 +189,7 @@ tasks:
     cmds:
       - task: deploy-argo-rollouts
       - cmd: kubectl create ns demos-argo-rollouts-bluegreen
-      - cmd: kubectl apply -f ./demos/argo-rollouts/blue-green
+      - cmd: kubectl apply -f ./kubernetes/demos/argo-rollouts/blue-green
       - cmd: kubectl wait --namespace demos-argo-rollouts-bluegreen --for=condition=ready pod -l=app=bluegreen-demo  --timeout={{.TIMEOUT}}
       - task: print-ingress
 
