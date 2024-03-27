@@ -6,11 +6,26 @@ vars:
 
 tasks:
 
-  build-windows:
+  init-tooling:
     desc: install all needed tools
-    platforms: [windows]
     cmds:
-      - curl.exe -LO "https://dl.k8s.io/release/v1.29.2/bin/windows/amd64/kubectl.exe"
+      - cmd: cmd /c mkdir bin
+        platforms: [windows]
+      - cmd: cmd /c $env:path+="$(pwd)\bin"
+        platforms: [windows]
+      - cmd: mkdir ./bin
+        platforms: [linux,darwin]
+      - curl -Lo ./bin/kubectl.exe https://dl.k8s.io/release/v1.29.2/bin/windows/amd64/kubectl.exe
+      - curl -Lo ./bin/kind.exe https://kind.sigs.k8s.io/dl/v0.22.0/kind-windows-amd64
+      - curl -Lo ./bin/helm.zip https://get.helm.sh/helm-v3.14.3-windows-amd64.zip
+      - cmd: powershell expand-archive ./bin/helm.zip ./bin
+        platforms: [windows]
+      - cmd: unzip ./bin/helm.zip ./bin
+        platforms: [linux,darwin]
+      - cmd: powershell move-item ./bin/windows-amd64/helm.exe ./bin/helm.exe
+        platforms: [windows]
+      - cmd: mv ./bin/windows-amd64/helm.exe ./bin/helm.exe
+        platforms: [linux,darwin]
 
   cluster-create-basic:
     desc: Creates a basic kind cluster with ingress
