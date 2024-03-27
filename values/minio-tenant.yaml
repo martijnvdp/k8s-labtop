@@ -26,3 +26,12 @@ tenant:
     disabled: true
   prometheus:
     disabled: true
+ingress:
+  api:
+    enabled: true
+    ingressClassName: nginx
+    host: minio.127.0.0.1.nip.io
+  console:
+    enabled: true
+    ingressClassName: nginx
+    host: minio-console.127.0.0.1.nip.io
