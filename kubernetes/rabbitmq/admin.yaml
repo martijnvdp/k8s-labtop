@@ -1,0 +1,40 @@
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: User
+metadata:
+  name: admin
+  namespace: rabbitmq-cluster
+spec:
+  tags:
+    - administrator
+  rabbitmqClusterReference:
+    name: rabbitmq-cluster
+    namespace: rabbitmq-cluster
+  importCredentialsSecret:
+    name: rmq-admin-user-secret
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Permission
+metadata:
+  name: admin
+spec:
+  vhost: ""
+  userReference:
+    name: admin
+  permissions:
+    write: ".*"
+    configure: ".*"
+    read: ".*"
+  rabbitmqClusterReference:
+    name: rabbitmq-cluster
+    namespace: rabbitmq-cluster
+---
+apiVersion: v1
+data:
+  password: YWRtaW4=
+  username: YWRtaW4=
+kind: Secret
+metadata:
+  name: rmq-admin-user-secret
+  namespace: rabbitmq-cluster
+type: Opaque
