@@ -17,8 +17,9 @@ apiVersion: rabbitmq.com/v1beta1
 kind: Permission
 metadata:
   name: admin
+  namespace: rabbitmq-cluster
 spec:
-  vhost: ""
+  vhost: "/"
   userReference:
     name: admin
   permissions:
