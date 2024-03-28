@@ -89,6 +89,17 @@ tasks:
       - k apply -f ./argo-resources/projects
       - k apply -f ./argo-resources/applications
 
+  deploy-cert-manager:
+    desc: deploys the certificate manager
+    deps:
+      - task: helm-repos
+      - task: kind-use-context
+    vars:
+      TIMEOUT: 600s
+    cmds:
+      - kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.3.1/cert-manager.yaml
+      - kubectl wait --namespace cert-manager --for=condition=ready pod -l=app.kubernetes.io/instance=cert-manager --timeout={{.TIMEOUT}}
+
   deploy-cilium-enterprise:
     desc: deploy cilium enterprise
     deps:
@@ -195,15 +206,18 @@ tasks:
     desc: deploy rabbitMQ operator and a rabbitmq cluster
     silent: true
     vars:
-      TIMEOUT: 5m
+      TIMEOUT: 10m
     deps:
       - task: kind-use-context
+      - task: deploy-cert-manager
     cmds:
       - kubectl apply -f https://github.com/rabbitmq/cluster-operator/releases/latest/download/cluster-operator.yml
       - kubectl wait --namespace rabbitmq-system --for=condition=ready pod -l=app.kubernetes.io/name=rabbitmq-cluster-operator
       - kubectl apply -f ./kubernetes/rabbitmq/namespace.yaml
       - kubectl apply -f ./kubernetes/rabbitmq
       - kubectl wait --namespace rabbitmq-cluster --for=condition=ready pod -l=app.kubernetes.io/name=rabbitmq-cluster
+      - kubectl apply -f https://github.com/rabbitmq/messaging-topology-operator/releases/latest/download/messaging-topology-operator-with-certmanager.yaml
+      - kubectl wait --namespace rabbitmq-cluster --for=condition=ready pod -l=app.kubernetes.io/name=messaging-topology-operator
       - task: print-ingress
       - cmd: echo "username (base64) "$(kubectl get secret -n rabbitmq-cluster rabbitmq-cluster-default-user -o=jsonpath='{.data.username}{"\n"}')
       - cmd: echo "password (base64) "$(kubectl get secret -n rabbitmq-cluster rabbitmq-cluster-default-user -o=jsonpath='{.data.password}{"\n"}')
