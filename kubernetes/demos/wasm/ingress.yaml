@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wasm-demo
+  namespace: wasm-demo
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: wasm-demo.127.0.0.1.nip.io
+      http:
+        paths:
+        - pathType: Prefix
+          path: "/"
+          backend:
+            service:
+              name: wasm-demo
+              port:
+                number: 8080
