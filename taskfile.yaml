@@ -236,6 +236,23 @@ tasks:
       - cmd: kubectl wait --namespace demos-argo-rollouts-bluegreen --for=condition=ready pod -l=app=bluegreen-demo  --timeout={{.TIMEOUT}}
       - task: print-ingress
 
+  demo-wasm:
+    desc: wasm demo from github.com/KWasm/kwasm-operator
+    vars:
+      TIMEOUT: 600s
+    deps:
+      - task: kind-use-context
+      - task: helm-repos
+    cmds:
+      - helm install -n kwasm --create-namespace kwasm-operator kwasm/kwasm-operator
+      - cmd: kubectl wait --namespace kwasm --for=condition=ready pod -l=app.kubernetes.io/name=kwasm-operator  --timeout={{.TIMEOUT}}
+      - kubectl annotate node kind-worker2 kwasm.sh/kwasm-node=true
+      - kubectl apply -f ./kubernetes/demos/wasm/namespace.yaml
+      - kubectl apply -f ./kubernetes/demos/wasm/
+      - kubectl apply -f https://raw.githubusercontent.com/KWasm/kwasm-operator/main/examples/kind/runtimeclass.yaml
+      - kubectl apply -f https://raw.githubusercontent.com/KWasm/kwasm-operator/main/examples/kind/pod.yaml -n wasm-demo
+      - task: print-ingress
+      - curl wasm-demo.127.0.0.1.nip.io
   kind-use-context:
     desc: set context to kind
     cmds:
@@ -265,6 +282,7 @@ tasks:
       - helm repo add crossplane-stable https://charts.crossplane.io/stable
       - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
       - helm repo add isovalent https://helm.isovalent.com
+      - helm repo add kwasm http://kwasm.sh/kwasm-operator/
       - helm repo add minio https://operator.min.io/
       - helm repo update crossplane-stable argo-cd ingress-nginx isovalent minio altinity-clickhouse-operator
     internal: true
