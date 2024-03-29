@@ -52,8 +52,8 @@ tasks:
       - task: deploy-hubble-enterprise
       - task: deploy-ingress-nginx
       - task: deploy-hubble-ui-enterprise
-      - task: print-ingress
-
+      - task: show-ingress
+    
   deploy-argocd:
     desc: deploys argocd
     silent: true
@@ -63,9 +63,16 @@ tasks:
       - task: helm-repos
       - task: kind-use-context
     cmds:
-      - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f ./values/argo-cd.yaml --create-namespace
-      - kubectl wait --namespace argo-cd --for=condition=Ready pod -l="app.kubernetes.io/instance"=argo-cd --timeout=600s
-      - cmd: echo "password (base64) "$(kubectl get secret -n argo-cd argocd-initial-admin-secret -o=jsonpath='{.data.password}{"\n"}')
+      - helm install argo-cd argo-cd/argo-cd  -n argocd -f ./values/argo-cd.yaml --create-namespace
+      - kubectl wait --namespace argocd --for=condition=Ready pod -l="app.kubernetes.io/instance"=argo-cd --timeout=600s
+      - task: deploy-argocd-example-apps
+      - task: show-ingress
+      - task: show-secret
+        vars:
+          secret: "argocd-initial-admin-secret"
+          property: "{.data.password}"
+          namespace: "argocd"
+          desc: "argo admin password"
 
   deploy-argo-rollouts:
     desc: deploys argo rollouts
@@ -77,17 +84,16 @@ tasks:
     cmds:
       - helm install argo-rollouts argo-cd/argo-rollouts  -n argo-rollouts -f ./values/argo-rollouts.yaml --create-namespace
       - kubectl wait --namespace argo-rollouts --for=condition=Ready pod -l="app.kubernetes.io/instance"=argo-rollouts --timeout=600s
-      - task: print-ingress
+      - task: show-ingress
 
-  deploy-argocd-apps:
+  deploy-argocd-example-apps:
     desc: deploys the argocd apps and projects
     deps:
       - task: helm-repos
       - task: kind-use-context
     cmds:
-      - helm install argo-cd argo-cd/argo-cd  -n argo-cd -f ./values/argo-cd.yaml --create-namespace
-      - k apply -f ./argo-resources/projects
-      - k apply -f ./argo-resources/applications
+      - kubectl apply -f ./argo-resources/projects
+      - kubectl apply -f ./argo-resources/applications
 
   deploy-cert-manager:
     desc: deploys the certificate manager
@@ -148,7 +154,7 @@ tasks:
     cmds:
       - helm install hubble-ui-enterprise isovalent/hubble-ui -f ./values/hubble-ui-enterprise.yaml -n cilium-system --version {{.hubbleUIEnterpriseVersion}}
       - kubectl wait --namespace cilium-system --for=condition=ready pod -l=k8s-app=hubble-ui --timeout={{.TIMEOUT}}
-      - task: print-ingress
+      - task: show-ingress
 
   deploy-hubble-timescape:
     desc: deploy hubble timescape
@@ -212,7 +218,7 @@ tasks:
       - helm install minio-operator minio/operator --wait --version 5.0.5 --namespace minio-operator --create-namespace
       - helm install minio-tenant minio/tenant --wait --version 5.0.5 --namespace minio --create-namespace -f ./values/minio-tenant.yaml
       - kubectl wait --for jsonpath='{.status.currentState}'=Initialized tenants quickstart -n minio --timeout={{.TIMEOUT}}
-      - task: print-ingress
+      - task: show-ingress
 
   deploy-rabbitmq:
     desc: deploy rabbitMQ operator and a rabbitmq cluster
@@ -224,14 +230,24 @@ tasks:
     cmds:
       - kubectl apply -f https://github.com/rabbitmq/cluster-operator/releases/latest/download/cluster-operator.yml
       - kubectl wait --namespace rabbitmq-system --for=condition=ready pod -l=app.kubernetes.io/name=rabbitmq-cluster-operator
+      - kubectl apply -f https://github.com/rabbitmq/messaging-topology-operator/releases/latest/download/messaging-topology-operator-with-certmanager.yaml
+      - kubectl wait --namespace rabbitmq-system --for=condition=ready pod -l=app.kubernetes.io/name=messaging-topology-operator
       - kubectl apply -f ./kubernetes/rabbitmq/namespace.yaml
       - kubectl apply -f ./kubernetes/rabbitmq
       - kubectl wait --namespace rabbitmq-cluster --for=condition=ready pod -l=app.kubernetes.io/name=rabbitmq-cluster
-      - kubectl apply -f https://github.com/rabbitmq/messaging-topology-operator/releases/latest/download/messaging-topology-operator-with-certmanager.yaml
-      - kubectl wait --namespace rabbitmq-cluster --for=condition=ready pod -l=app.kubernetes.io/name=messaging-topology-operator
-      - task: print-ingress
-      - cmd: echo "username (base64) "$(kubectl get secret -n rabbitmq-cluster rabbitmq-cluster-default-user -o=jsonpath='{.data.username}{"\n"}')
-      - cmd: echo "password (base64) "$(kubectl get secret -n rabbitmq-cluster rabbitmq-cluster-default-user -o=jsonpath='{.data.password}{"\n"}')
+      - task: show-ingress
+      - task: show-secret
+        vars:
+          secret: "rabbitmq-cluster-default-user"
+          namespace: "rabbitmq-cluster"
+          property: "{.data.username}"
+          desc: "username:"
+      - task: show-secret
+        vars:
+          secret: "rabbitmq-cluster-default-user"
+          namespace: "rabbitmq-cluster"
+          property: "{.data.password}"
+          desc: "password:"
 
   deploy-vpa:
     desc: deploy vpa
@@ -258,7 +274,7 @@ tasks:
       - cmd: kubectl create ns demo-argo-rollouts-bluegreen
       - cmd: kubectl apply -f ./kubernetes/demos/argo-rollouts/blue-green
       - cmd: kubectl wait --namespace demo-argo-rollouts-bluegreen --for=condition=ready pod -l=app=bluegreen-demo  --timeout={{.TIMEOUT}}
-      - task: print-ingress
+      - task: show-ingress
 
   demo-vertical-pod-autoscaler:
     desc: vpa demo
@@ -288,7 +304,7 @@ tasks:
       - kubectl apply -f ./kubernetes/demos/wasm/
       - kubectl apply -f https://raw.githubusercontent.com/KWasm/kwasm-operator/main/examples/kind/runtimeclass.yaml
       - kubectl apply -f https://raw.githubusercontent.com/KWasm/kwasm-operator/main/examples/kind/pod.yaml -n wasm-demo
-      - task: print-ingress
+      - task: show-ingress
       - curl wasm-demo.127.0.0.1.nip.io
 
   kind-use-context:
@@ -326,7 +342,20 @@ tasks:
       - helm repo update crossplane-stable argo-cd ingress-nginx isovalent kwasm metrics-server minio altinity-clickhouse-operator
     internal: true
 
-  print-ingress:
+  show-ingress:
     desc: print all ingress urls
     cmds:
       -  kubectl get ingress -A -o=jsonpath='{range .items[*]}http://{.spec.rules[0].host}{"\n"}{end}'
+
+  show-secret:
+    internal: true
+    silent: true
+    vars:
+      PWD:
+        sh: kubectl -n {{.namespace}} get secret {{.secret}} -o jsonpath='{{.property}}'
+    cmds:
+      - cmd: echo "{{.desc}}"
+      - cmd: powershell '[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("{{.PWD}}"))'
+        platforms: [windows]
+      - cmd:  echo "{{.PWD}}" | base64 -d 
+        platforms: [linux,darwin]

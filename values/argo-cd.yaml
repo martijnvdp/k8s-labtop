@@ -6,3 +6,7 @@ server:
 configs:
   params:
     server.insecure: true
+  repositories:
+    argocd-example-apps:
+      url: https://github.com/argoproj/argocd-example-apps
+      name: argocd-example-apps
