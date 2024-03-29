@@ -9,20 +9,26 @@ tasks:
     platforms: [linux]
     desc: install all needed tools for linux
     cmds:
-      - cmd: sudo apt update
-      - cmd: sudo apt install coreutils
-
+      - sudo apt update
+      - sudo apt install coreutils
+      - curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.22.0/kind-linux-amd64
+      - sudo mv ./kind /usr/local/bin/kind
+      - sudo curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      - sudo curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+      - sudo chmod +x ./kubectl 
+      - sudo mv ./kubectl /usr/local/bin/kubectl
+  
   init-windows-tooling:
     platforms: [windows]
     desc: install all needed tools
     cmds:
-      - cmd: cmd /c mkdir bin
-      - cmd: cmd /c $env:path+="$(pwd)\bin"
-      - cmd: curl -Lo ./bin/kubectl.exe https://dl.k8s.io/release/v1.29.2/bin/windows/amd64/kubectl.exe
-      - cmd: curl -Lo ./bin/kind.exe https://kind.sigs.k8s.io/dl/v0.22.0/kind-windows-amd64
-      - cmd: curl -Lo ./bin/helm.zip https://get.helm.sh/helm-v3.14.3-windows-amd64.zip
-      - cmd: powershell expand-archive ./bin/helm.zip ./bin
-      - cmd: powershell move-item ./bin/windows-amd64/helm.exe ./bin/helm.exe
+      - cmd /c mkdir bin
+      - cmd /c $env:path+="$(pwd)\bin"
+      - curl -Lo ./bin/kubectl.exe https://dl.k8s.io/release/v1.29.2/bin/windows/amd64/kubectl.exe
+      - curl -Lo ./bin/kind.exe https://kind.sigs.k8s.io/dl/v0.22.0/kind-windows-amd64
+      - curl -Lo ./bin/helm.zip https://get.helm.sh/helm-v3.14.3-windows-amd64.zip
+      - powershell expand-archive ./bin/helm.zip ./bin
+      - powershell move-item ./bin/windows-amd64/helm.exe ./bin/helm.exe
 
   cluster-create-basic:
     desc: Creates a basic kind cluster with ingress
