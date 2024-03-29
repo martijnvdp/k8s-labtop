@@ -31,3 +31,4 @@ and check with  `uname -r` the version , should have cilium at the end
 - https://wsl.dev/wslcilium/
 - https://harthoover.com/compiling-your-own-wsl2-kernel/
 - https://kind.sigs.k8s.io/docs/user/using-wsl2/
+- https://docs.cilium.io/en/stable/operations/system_requirements/#linux-kernel
