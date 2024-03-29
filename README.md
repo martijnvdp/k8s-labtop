@@ -30,3 +30,4 @@ and check with  `uname -r` the version , should have cilium at the end
 - https://github.com/go-task/task
 - https://wsl.dev/wslcilium/
 - https://harthoover.com/compiling-your-own-wsl2-kernel/
+- https://kind.sigs.k8s.io/docs/user/using-wsl2/

@@ -30,6 +30,12 @@ tasks:
       - powershell expand-archive ./bin/helm.zip ./bin
       - powershell move-item ./bin/windows-amd64/helm.exe ./bin/helm.exe
 
+  init-update-wsl:
+    desc: update wsl
+    platforms: [windows]
+    cmds: 
+      - wsl --update --pre-release
+
   cluster-create-basic:
     desc: Creates a basic kind cluster with ingress
     output: prefixed
@@ -330,6 +336,7 @@ tasks:
     desc: Creates a kind cluster
     cmds: 
       - 'kind create cluster --config {{ .config }}'
+      - kind export kubeconfig --kubeconfig ~/.kube/config
     ignore_error: true
 
   helm-repos:
