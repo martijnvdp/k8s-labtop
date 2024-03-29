@@ -1,4 +1,4 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: demo-argo-rollouts-bluegreen
+  name: demo-vpa

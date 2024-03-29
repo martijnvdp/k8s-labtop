@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: bluegreen-demo-preview
-  namespace: demos-argo-rollouts-bluegreen
+  namespace: demo-argo-rollouts-bluegreen
   labels:
     app: bluegreen-demo
 spec:

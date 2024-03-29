@@ -109,8 +109,9 @@ tasks:
       TIMEOUT: 600s
       VERSION: 1.14.8
     cmds:
-      - helm install cilium-enterprise isovalent/cilium -f ./values/cilium-enterprise.yaml -n kube-system --version {{.VERSION}}
-      - kubectl wait --namespace kube-system --for=condition=ready pod -l=app.kubernetes.io/part-of=cilium --timeout={{.TIMEOUT}}
+      - kubectl apply -f ./kubernetes/cilium/namespace.yaml
+      - helm install cilium-enterprise isovalent/cilium -f ./values/cilium-enterprise.yaml -n cilium-system --version {{.VERSION}}
+      - kubectl wait --namespace cilium-system --for=condition=ready pod -l=app.kubernetes.io/part-of=cilium --timeout={{.TIMEOUT}}
 
   deploy-clickhouse-operator:
     desc: deploy clickhouse operator
@@ -130,11 +131,11 @@ tasks:
       - task: helm-repos
       - task: kind-use-context
     vars:
-      TIMEOUT: 600s
+      TIMEOUT: 10m
       VERSION: 1.11.9
     cmds:
-      - helm install hubble-enterprise isovalent/hubble-enterprise -f ./values/hubble-enterprise.yaml -n kube-system --version {{.hubbleEnterpriseVersion}}
-      - kubectl wait --namespace kube-system --for=condition=ready pod -l=app.kubernetes.io/name=hubble-enterprise --timeout={{.TIMEOUT}}
+      - helm install hubble-enterprise isovalent/hubble-enterprise -f ./values/hubble-enterprise.yaml -n cilium-system --version {{.hubbleEnterpriseVersion}}
+      - kubectl wait --namespace cilium-system --for=condition=ready pod -l=app.kubernetes.io/name=hubble-enterprise --timeout={{.TIMEOUT}}
 
   deploy-hubble-ui-enterprise:
     desc: deploy hubble ui enterprise
@@ -145,8 +146,8 @@ tasks:
       TIMEOUT: 600s
       VERSION: 0.28.1
     cmds:
-      - helm install hubble-ui-enterprise isovalent/hubble-ui -f ./values/hubble-ui-enterprise.yaml -n kube-system --version {{.hubbleUIEnterpriseVersion}}
-      - kubectl wait --namespace kube-system --for=condition=ready pod -l=k8s-app=hubble-ui --timeout={{.TIMEOUT}}
+      - helm install hubble-ui-enterprise isovalent/hubble-ui -f ./values/hubble-ui-enterprise.yaml -n cilium-system --version {{.hubbleUIEnterpriseVersion}}
+      - kubectl wait --namespace cilium-system --for=condition=ready pod -l=k8s-app=hubble-ui --timeout={{.TIMEOUT}}
       - task: print-ingress
 
   deploy-hubble-timescape:
@@ -159,8 +160,8 @@ tasks:
       VERSION: 1.2.2
     cmds:
       - task: deploy-minio
-      - helm upgrade hubble-enterprise isovalent/hubble-enterprise --wait --version {{.hubbleEnterpriseVersion}} -n kube-system -f ./values/hubble-enterprise-timescape.yaml 
-      - kubectl wait --namespace kube-system --for=condition=ready pod -l=app.kubernetes.io/name=hubble-enterprise --timeout={{.TIMEOUT}}
+      - helm upgrade hubble-enterprise isovalent/hubble-enterprise --wait --version {{.hubbleEnterpriseVersion}} -n cilium-system -f ./values/hubble-enterprise-timescape.yaml 
+      - kubectl wait --namespace cilium-system --for=condition=ready pod -l=app.kubernetes.io/name=hubble-enterprise --timeout={{.TIMEOUT}}
       - task: deploy-clickhouse-operator
       - |
         kubectl create namespace hubble-timescape
@@ -175,8 +176,8 @@ tasks:
         --from-literal CLICKHOUSE_PASSWORD=server-password
       - helm install hubble-timescape isovalent/hubble-timescape --version {{.VERSION}} --namespace hubble-timescape --values ./values/hubble-timescape.yaml
       - kubectl wait --namespace hubble-timescape --for=condition=ready pod -l=app.kubernetes.io/part-of=hubble-timescape --timeout={{.TIMEOUT}}
-      - helm upgrade hubble-ui-enterprise isovalent/hubble-ui --reuse-values --set timescape.enabled=true -n kube-system --version {{.hubbleUIEnterpriseVersion}}
-      - kubectl wait --namespace kube-system --for=condition=ready pod -l=k8s-app=hubble-ui --timeout={{.TIMEOUT}}
+      - helm upgrade hubble-ui-enterprise isovalent/hubble-ui --reuse-values --set timescape.enabled=true -n cilium-system --version {{.hubbleUIEnterpriseVersion}}
+      - kubectl wait --namespace cilium-system --for=condition=ready pod -l=k8s-app=hubble-ui --timeout={{.TIMEOUT}}
   
   deploy-ingress-nginx:
     desc: deploys the ingress-nginx controller
@@ -188,6 +189,17 @@ tasks:
     cmds:
       - helm install ingress-nginx ingress-nginx/ingress-nginx -f ./values/ingress-nginx.yaml -n ingress-nginx --create-namespace
       - kubectl wait --namespace ingress-nginx --for=condition=ready pod -l=app.kubernetes.io/component=controller --timeout={{.TIMEOUT}}
+
+  deploy-metrics-server:
+    desc: deploy metrics-server
+    deps:
+      - task: helm-repos
+      - task: kind-use-context
+    vars:
+      TIMEOUT: 5m
+    cmds:
+      - helm install metrics-server metrics-server/metrics-server -f ./values/metrics-server.yaml --wait --version 3.12.0 --namespace metrics-server --create-namespace
+      - kubectl wait --namespace metrics-server --for=condition=ready pod -l=app.kubernetes.io/name=metrics-server
 
   deploy-minio:
     desc: deploy minio storrage (S3 compatible blob storage)
@@ -208,7 +220,6 @@ tasks:
     vars:
       TIMEOUT: 10m
     deps:
-      - task: kind-use-context
       - task: deploy-cert-manager
     cmds:
       - kubectl apply -f https://github.com/rabbitmq/cluster-operator/releases/latest/download/cluster-operator.yml
@@ -222,6 +233,19 @@ tasks:
       - cmd: echo "username (base64) "$(kubectl get secret -n rabbitmq-cluster rabbitmq-cluster-default-user -o=jsonpath='{.data.username}{"\n"}')
       - cmd: echo "password (base64) "$(kubectl get secret -n rabbitmq-cluster rabbitmq-cluster-default-user -o=jsonpath='{.data.password}{"\n"}')
 
+  deploy-vpa:
+    desc: deploy vpa
+    silent: true
+    vars:
+      TIMEOUT: 600s
+    deps:
+      - task: deploy-cert-manager
+    cmds:
+      - task: deploy-metrics-server
+      - kubectl apply -f ./kubernetes/vertical-pod-autoscaler
+      - kubectl wait --namespace kube-system --for=condition=ready pod -l=app=vpa-recommender --timeout={{.TIMEOUT}}
+      - kubectl wait --namespace kube-system --for=condition=ready pod -l=app=vpa-admission-controller --timeout={{.TIMEOUT}}
+
   demo-argo-rollouts-blue-green:
     desc: deploy argo rolouts blue-green demo
     silent: true
@@ -231,10 +255,23 @@ tasks:
       - task: kind-use-context
     cmds:
       - task: deploy-argo-rollouts
-      - cmd: kubectl create ns demos-argo-rollouts-bluegreen
+      - cmd: kubectl create ns demo-argo-rollouts-bluegreen
       - cmd: kubectl apply -f ./kubernetes/demos/argo-rollouts/blue-green
-      - cmd: kubectl wait --namespace demos-argo-rollouts-bluegreen --for=condition=ready pod -l=app=bluegreen-demo  --timeout={{.TIMEOUT}}
+      - cmd: kubectl wait --namespace demo-argo-rollouts-bluegreen --for=condition=ready pod -l=app=bluegreen-demo  --timeout={{.TIMEOUT}}
       - task: print-ingress
+
+  demo-vertical-pod-autoscaler:
+    desc: vpa demo
+    vars:
+      TIMEOUT: 600s
+    deps:
+      #- task: deploy-vpa
+    cmds:
+      - kubectl apply -f ./kubernetes/demos/vertical-pod-autoscaler/namespace.yaml
+      - kubectl apply -f ./kubernetes/demos/vertical-pod-autoscaler/
+      - cmd: kubectl wait --namespace demo-vpa --for=condition=ready pod -l=app=cpu-utilization-app --timeout={{.TIMEOUT}}
+      - kubectl get vpa -n demo-vpa
+      - echo "kubectl get pods -n demo-vpa --watch"
 
   demo-wasm:
     desc: wasm demo from github.com/KWasm/kwasm-operator
@@ -253,6 +290,7 @@ tasks:
       - kubectl apply -f https://raw.githubusercontent.com/KWasm/kwasm-operator/main/examples/kind/pod.yaml -n wasm-demo
       - task: print-ingress
       - curl wasm-demo.127.0.0.1.nip.io
+
   kind-use-context:
     desc: set context to kind
     cmds:
@@ -283,8 +321,9 @@ tasks:
       - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
       - helm repo add isovalent https://helm.isovalent.com
       - helm repo add kwasm http://kwasm.sh/kwasm-operator/
+      - helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
       - helm repo add minio https://operator.min.io/
-      - helm repo update crossplane-stable argo-cd ingress-nginx isovalent minio altinity-clickhouse-operator
+      - helm repo update crossplane-stable argo-cd ingress-nginx isovalent kwasm metrics-server minio altinity-clickhouse-operator
     internal: true
 
   print-ingress:
