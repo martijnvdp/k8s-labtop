@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: bluegreen-demo-preview
-  namespace: demos-argo-rollouts-bluegreen
+  namespace: demo-argo-rollouts-bluegreen
 spec:
   ingressClassName: nginx
   rules:
