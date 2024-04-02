@@ -374,8 +374,8 @@ tasks:
       - helm repo add kwasm http://kwasm.sh/kwasm-operator/
       - helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
       - helm repo add minio https://operator.min.io/
-      - helm repo add prometheus https://prometheus-community.github.io/helm-charts
-      - helm repo update crossplane-stable argo-cd ingress-nginx isovalent kwasm metrics-server minio prometheus altinity-clickhouse-operator
+      - helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+      - helm repo update crossplane-stable argo-cd ingress-nginx isovalent kwasm metrics-server minio prometheus-community altinity-clickhouse-operator
     internal: true
 
   show-ingress:
