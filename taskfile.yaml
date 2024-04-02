@@ -279,8 +279,9 @@ tasks:
     deps:
       - task: kind-use-context
     cmds:
-      - helm install kind-prometheus prometheus-community/kube-prometheus-stack --create-namespace --namespace monitoring --set prometheus.service.nodePort=30000 --set prometheus.service.type=NodePort --set grafana.service.nodePort=31000 --set grafana.service.type=NodePort --set alertmanager.service.nodePort=32000 --set alertmanager.service.type=NodePort --set prometheus-node-exporter.service.nodePort=32001 --set prometheus-node-exporter.service.type=NodePort
-      - kubectl wait --namespace monitoring --for=condition=ready pod -l=app.kubernetes.io/instance=kind-prometheus --timeout={{.TIMEOUT}}
+      - helm install prometheus prometheus-community/kube-prometheus-stack --create-namespace --namespace monitoring -f ./values/prometheus-stack.yaml
+      - kubectl wait --namespace monitoring --for=condition=ready pod -l=app.kubernetes.io/instance=prometheus --timeout={{.TIMEOUT}}
+      - task: show-ingress
 
   demo-argo-rollouts-blue-green:
     desc: deploy argo rolouts blue-green demo
