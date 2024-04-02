@@ -242,7 +242,6 @@ tasks:
       - kubectl wait --namespace kube-system --for=condition=ready pod -l=app=vpa-recommender --timeout={{.TIMEOUT}}
       - kubectl wait --namespace kube-system --for=condition=ready pod -l=app=vpa-admission-controller --timeout={{.TIMEOUT}}
 
-
   deploy-rabbitmq:
     desc: deploy rabbitMQ operator and a rabbitmq cluster
     silent: true
@@ -302,7 +301,7 @@ tasks:
     vars:
       TIMEOUT: 600s
     deps:
-      #- task: deploy-vpa
+      - task: deploy-vpa
     cmds:
       - kubectl apply -f ./kubernetes/demos/vertical-pod-autoscaler/namespace.yaml
       - kubectl apply -f ./kubernetes/demos/vertical-pod-autoscaler/
