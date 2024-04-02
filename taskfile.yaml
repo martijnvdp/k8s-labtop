@@ -282,6 +282,18 @@ tasks:
       - helm install prometheus prometheus-community/kube-prometheus-stack --create-namespace --namespace monitoring -f ./values/prometheus-stack.yaml
       - kubectl wait --namespace monitoring --for=condition=ready pod -l=app.kubernetes.io/instance=prometheus --timeout={{.TIMEOUT}}
       - task: show-ingress
+      - task: show-secret
+        vars:
+          secret: "prometheus-grafana"
+          namespace: "monitoring"
+          property: "{.data.admin-user}"
+          desc: "username:"
+      - task: show-secret
+        vars:
+          secret: "prometheus-grafana"
+          namespace: "monitoring"
+          property: "{.data.admin-password}"
+          desc: "password:"
 
   demo-argo-rollouts-blue-green:
     desc: deploy argo rolouts blue-green demo
