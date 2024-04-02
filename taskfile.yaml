@@ -278,6 +278,7 @@ tasks:
       TIMEOUT: 600s
     deps:
       - task: kind-use-context
+      - task: helm-repos
     cmds:
       - helm install prometheus prometheus-community/kube-prometheus-stack --create-namespace --namespace monitoring -f ./values/prometheus-stack.yaml
       - kubectl wait --namespace monitoring --for=condition=ready pod -l=app.kubernetes.io/instance=prometheus --timeout={{.TIMEOUT}}
