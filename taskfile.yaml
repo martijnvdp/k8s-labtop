@@ -229,6 +229,20 @@ tasks:
       - kubectl wait --for jsonpath='{.status.currentState}'=Initialized tenants quickstart -n minio --timeout={{.TIMEOUT}}
       - task: show-ingress
 
+  deploy-vpa:
+    desc: deploy vpa
+    silent: true
+    vars:
+      TIMEOUT: 600s
+    deps:
+      - task: deploy-cert-manager
+    cmds:
+      - task: deploy-metrics-server
+      - kubectl apply -f ./kubernetes/vertical-pod-autoscaler
+      - kubectl wait --namespace kube-system --for=condition=ready pod -l=app=vpa-recommender --timeout={{.TIMEOUT}}
+      - kubectl wait --namespace kube-system --for=condition=ready pod -l=app=vpa-admission-controller --timeout={{.TIMEOUT}}
+
+
   deploy-rabbitmq:
     desc: deploy rabbitMQ operator and a rabbitmq cluster
     silent: true
@@ -258,18 +272,16 @@ tasks:
           property: "{.data.password}"
           desc: "password:"
 
-  deploy-vpa:
-    desc: deploy vpa
+  deploy-prometheus:
+    desc: deploy prometheus stack
     silent: true
     vars:
       TIMEOUT: 600s
     deps:
-      - task: deploy-cert-manager
+      - task: kind-use-context
     cmds:
-      - task: deploy-metrics-server
-      - kubectl apply -f ./kubernetes/vertical-pod-autoscaler
-      - kubectl wait --namespace kube-system --for=condition=ready pod -l=app=vpa-recommender --timeout={{.TIMEOUT}}
-      - kubectl wait --namespace kube-system --for=condition=ready pod -l=app=vpa-admission-controller --timeout={{.TIMEOUT}}
+      - helm install kind-prometheus prometheus-community/kube-prometheus-stack --create-namespace --namespace monitoring --set prometheus.service.nodePort=30000 --set prometheus.service.type=NodePort --set grafana.service.nodePort=31000 --set grafana.service.type=NodePort --set alertmanager.service.nodePort=32000 --set alertmanager.service.type=NodePort --set prometheus-node-exporter.service.nodePort=32001 --set prometheus-node-exporter.service.type=NodePort
+      - kubectl wait --namespace monitoring --for=condition=ready pod -l=app.kubernetes.io/instance=kind-prometheus --timeout={{.TIMEOUT}}
 
   demo-argo-rollouts-blue-green:
     desc: deploy argo rolouts blue-green demo
@@ -349,7 +361,8 @@ tasks:
       - helm repo add kwasm http://kwasm.sh/kwasm-operator/
       - helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
       - helm repo add minio https://operator.min.io/
-      - helm repo update crossplane-stable argo-cd ingress-nginx isovalent kwasm metrics-server minio altinity-clickhouse-operator
+      - helm repo add prometheus https://prometheus-community.github.io/helm-charts
+      - helm repo update crossplane-stable argo-cd ingress-nginx isovalent kwasm metrics-server minio prometheus altinity-clickhouse-operator
     internal: true
 
   show-ingress:
